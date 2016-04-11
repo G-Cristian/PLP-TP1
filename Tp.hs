@@ -54,30 +54,25 @@ knn :: Int -> Datos -> [Etiqueta] -> Medida -> Modelo
 knn k datos etiquetas norma = (\valor -> snd (mejor (cuentas (kMenores k datos etiquetas norma valor))))
 
 accuracy :: [Etiqueta] -> [Etiqueta] -> Float
-accuracy xs ys = fromIntegral(contarIguales (zip xs ys) / fromIntegral(length xs)) 
+accuracy xs ys = (fromIntegral $ contarIguales $ zip xs ys) / (fromIntegral $ length xs) 
 
 separarDatos :: Datos -> [Etiqueta] -> Int -> Int -> (Datos, Datos, [Etiqueta], [Etiqueta])
 separarDatos datos etiquetas n p =	(fst(unzip(dameTrain (take ((calcularTamano datos n) * n) (zip datos etiquetas)) p (calcularTamano datos n))),
                         fst (unzip(dameVal (take ((calcularTamano datos n) * n) (zip datos etiquetas)) p (calcularTamano datos n))), 
                         snd(unzip(dameTrain (take ((calcularTamano datos n) * n) (zip datos etiquetas)) p (calcularTamano datos n))),
                         snd (unzip(dameVal (take ((calcularTamano datos n) * n) (zip datos etiquetas))  p (calcularTamano datos n))))
-
 						
---nFoldCrossValidation :: Int -> Datos -> [Etiqueta] -> Float
---nFoldCrossValidation n datos etiquetas = (sum accuracies) / (fromIntegral n)
---	where accuracies = map(\x -> accuracy (cuarto $ datosSeparados x) (etiquetasObtenidas $ segundo $ datosSeparados x)) [1..n]
---		  datosSeparados particionDeValidacion = separarDatos datos etiquetas n particionDeValidacion
---		  etiquetasObtenidas instancias = foldr(\instancia acum -> (modeloK15 instancia):acum) [] instancias
---		  modeloK15 = knn 15 primero(datosSeparados) tercero(datosSeparados) distEuclideana
+nFoldCrossValidation :: Int -> Datos -> [Etiqueta] -> Float
+nFoldCrossValidation n datos etiquetas = (sum $ accuracies datos etiquetas n) / (fromIntegral n)
 
---accuracies::Datos -> [Etiqueta]->Int -> [Feature]
---accuracies datos etiquetas n = map(\particionDeValidacion -> accuracy (cuarto $ separarDatos datos etiquetas n particionDeValidacion) (etiquetasObtenidas datos etiquetas n particionDeValidacion (segundo $ separarDatos datos etiquetas n particionDeValidacion))) [1..n]
+accuracies::Datos -> [Etiqueta]->Int -> [Feature]
+accuracies datos etiquetas n = map(\particionDeValidacion -> accuracy (cuarto $ separarDatos datos etiquetas n particionDeValidacion) (etiquetasObtenidas datos etiquetas n particionDeValidacion (segundo $ separarDatos datos etiquetas n particionDeValidacion))) [1..n]
 
---etiquetasObtenidas::Datos -> [Etiqueta]->Int->Int->[Instancia]->[Etiqueta]
---etiquetasObtenidas datos etiquetas n particionDeValidacion instancias = foldr(\instancia acum -> (modeloK15 datos etiquetas n particionDeValidacion instancia):acum) [] instancias
+etiquetasObtenidas::Datos -> [Etiqueta]->Int->Int->[Instancia]->[Etiqueta]
+etiquetasObtenidas datos etiquetas n particionDeValidacion instancias = foldr(\instancia acum -> (modeloK15 datos etiquetas n particionDeValidacion instancia):acum) [] instancias
 
---modeloK15::Datos -> [Etiqueta]->Int->Int->Modelo
---modeloK15 datos etiquetas n particionDeValidacion = (knn 15 primero(separarDatos datos etiquetas n particionDeValidacion) tercero(separarDatos datos etiquetas n particionDeValidacion) distEuclideana)
+modeloK15::Datos -> [Etiqueta]->Int->Int->Modelo
+modeloK15 datos etiquetas n particionDeValidacion = (knn 15 (primero $ separarDatos datos etiquetas n particionDeValidacion) (tercero $ separarDatos datos etiquetas n particionDeValidacion) distEuclideana)
 
 primero :: (a,b,c,d) -> a
 primero (x,y,z,w) = x
@@ -91,9 +86,8 @@ tercero :: (a,b,c,d) -> c
 tercero (x,y,z,w) = z
 
 cuarto :: (a,b,c,d) -> d
-cuarto (x,y,z,w) = w
-
--- *************** Funciones auxiliares ********************
+cuarto (x,y,z,w) = w	
+	-- *************** Funciones auxiliares ********************
 
 cantidadDeApariciones::Eq a => [a]->([a]->[(Int,a)])
 cantidadDeApariciones = foldr (\x contar -> (\ys->((repeticiones x ys),x):contar ys)) (\ys->[])
@@ -125,6 +119,7 @@ normalizarExtractores textos extractores = map (\ext -> normalizarExtractor text
 sumProductoEscalar :: Instancia -> Instancia -> Feature
 sumProductoEscalar p q = sum (zipWith (*) p q)
 
+
 -- Para ejercicio 9
 
 kMenores :: Int -> Datos -> [Etiqueta] -> Medida -> Instancia -> [(Instancia,Etiqueta)]
@@ -136,7 +131,7 @@ mejor xs = snd (maximumBy (\a b -> if (fst a)<(fst b) then LT else GT) xs)
 
 -- Para ejercicio 10
 
-contarIguales :: [(a,a)] -> Int
+contarIguales ::Eq a =>  [(a,a)] -> Int
 contarIguales = foldr(\x acum -> if(fst(x) == snd(x)) then acum+1 else acum) 0 
 
 -- Para ejercicio 11

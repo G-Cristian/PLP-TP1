@@ -57,37 +57,22 @@ accuracy :: [Etiqueta] -> [Etiqueta] -> Float
 accuracy xs ys = (fromIntegral $ contarIguales $ zip xs ys) / (fromIntegral $ length xs) 
 
 separarDatos :: Datos -> [Etiqueta] -> Int -> Int -> (Datos, Datos, [Etiqueta], [Etiqueta])
-separarDatos datos etiquetas n p =	(fst(unzip(dameTrain (take ((calcularTamano datos n) * n) (zip datos etiquetas)) p (calcularTamano datos n))),
+separarDatos datos etiquetas n p = (fst(unzip(dameTrain (take ((calcularTamano datos n) * n) (zip datos etiquetas)) p (calcularTamano datos n))),
                         fst (unzip(dameVal (take ((calcularTamano datos n) * n) (zip datos etiquetas)) p (calcularTamano datos n))), 
                         snd(unzip(dameTrain (take ((calcularTamano datos n) * n) (zip datos etiquetas)) p (calcularTamano datos n))),
                         snd (unzip(dameVal (take ((calcularTamano datos n) * n) (zip datos etiquetas))  p (calcularTamano datos n))))
-						
+
+
 nFoldCrossValidation :: Int -> Datos -> [Etiqueta] -> Float
-nFoldCrossValidation n datos etiquetas = (sum $ accuracies datos etiquetas n) / (fromIntegral n)
-
-accuracies::Datos -> [Etiqueta]->Int -> [Feature]
-accuracies datos etiquetas n = map(\particionDeValidacion -> accuracy (cuarto $ separarDatos datos etiquetas n particionDeValidacion) (etiquetasObtenidas datos etiquetas n particionDeValidacion (segundo $ separarDatos datos etiquetas n particionDeValidacion))) [1..n]
-
-etiquetasObtenidas::Datos -> [Etiqueta]->Int->Int->[Instancia]->[Etiqueta]
-etiquetasObtenidas datos etiquetas n particionDeValidacion instancias = foldr(\instancia acum -> (modeloK15 datos etiquetas n particionDeValidacion instancia):acum) [] instancias
-
-modeloK15::Datos -> [Etiqueta]->Int->Int->Modelo
-modeloK15 datos etiquetas n particionDeValidacion = (knn 15 (primero $ separarDatos datos etiquetas n particionDeValidacion) (tercero $ separarDatos datos etiquetas n particionDeValidacion) distEuclideana)
-
-primero :: (a,b,c,d) -> a
-primero (x,y,z,w) = x
+nFoldCrossValidation n datos etiquetas = (sum accuracies) / (fromIntegral n)
+    where accuracyPorParticion particionDeValidacion = let datosSeparados = separarDatos datos etiquetas n particionDeValidacion
+                                                           modeloK15 = (knn 15 (primero datosSeparados) (tercero datosSeparados) distEuclideana)
+                                                           etiquetasObtenidas = foldr(\instancia acum -> (modeloK15 instancia):acum) []
+                                                           in accuracy (cuarto datosSeparados) (etiquetasObtenidas (segundo datosSeparados))
+          accuracies = [accuracyPorParticion x | x<-[1..n]]
 
 
-segundo :: (a,b,c,d) -> b
-segundo (x,y,z,w) = y
-
-
-tercero :: (a,b,c,d) -> c
-tercero (x,y,z,w) = z
-
-cuarto :: (a,b,c,d) -> d
-cuarto (x,y,z,w) = w	
-	-- *************** Funciones auxiliares ********************
+-- *************** Funciones auxiliares ********************
 
 cantidadDeApariciones::Eq a => [a]->([a]->[(Int,a)])
 cantidadDeApariciones = foldr (\x contar -> (\ys->((repeticiones x ys),x):contar ys)) (\ys->[])
@@ -95,17 +80,19 @@ cantidadDeApariciones = foldr (\x contar -> (\ys->((repeticiones x ys),x):contar
 repeticiones::Eq a =>a->[a]->Int
 repeticiones x = foldr (\y contar -> if x==y then (1+) contar else contar) 0
 
--- TODO poner tipos
+elementosSinRepetir :: Eq a => [a] -> [a]
 elementosSinRepetir xs = (foldr(\x recu->(\ys -> if repeticiones x (tail ys) == 0 then x:recu (tail ys) else recu (tail ys))) (\ys->[]) xs) xs
 
 apariciones :: Eq a => a -> [a] -> Int
 apariciones a = foldr (\x xs -> if x==a then (1+xs) else xs) 0
 
-
+maximoValor :: [Texto] -> Extractor -> Feature
 maximoValor textos extractor = abs $ maximoAbsoluto $ ejecutarExtractor textos extractor
 
+maximoAbsoluto :: [Feature] -> Feature
 maximoAbsoluto = foldr (\x buscarMax -> if abs x >= abs buscarMax then abs x else abs buscarMax) 0
 
+ejecutarExtractor:: [Texto] -> Extractor -> [Feature]
 ejecutarExtractor textos extractor = map extractor textos
 
 aplicarExtractores :: Texto -> [Extractor] -> Instancia
@@ -124,7 +111,7 @@ sumProductoEscalar p q = sum (zipWith (*) p q)
 
 kMenores :: Int -> Datos -> [Etiqueta] -> Medida -> Instancia -> [(Instancia,Etiqueta)]
 kMenores k datos etiquetas norma valor = take k (sortBy 
-	(\a b -> (if ((norma (fst a) valor) < (norma (fst b) valor)) then LT else GT )) (zip datos etiquetas))
+    (\a b -> (if ((norma (fst a) valor) < (norma (fst b) valor)) then LT else GT )) (zip datos etiquetas))
 
 mejor :: [(Int,a)] -> a
 mejor xs = snd (maximumBy (\a b -> if (fst a)<(fst b) then LT else GT) xs)
@@ -141,6 +128,21 @@ dameTrain xs p tamano = (take (tamano * (p-1)) xs) ++ (drop (p*tamano) xs )
 
 dameVal:: [(Instancia,Etiqueta)] -> Int -> Int -> [(Instancia,Etiqueta)]
 dameVal xs p tamano = take tamano (drop ((p-1)*tamano) xs)
-	
+
 calcularTamano:: [a] -> Int -> Int
 calcularTamano xs n = (length xs) `quot` n
+
+-- Para ejercicio 12
+
+
+primero :: (a,b,c,d) -> a
+primero (x,y,z,w) = x
+
+segundo :: (a,b,c,d) -> b
+segundo (x,y,z,w) = y
+
+tercero :: (a,b,c,d) -> c
+tercero (x,y,z,w) = z
+
+cuarto :: (a,b,c,d) -> d
+cuarto (x,y,z,w) = w
